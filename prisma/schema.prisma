@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model GuestSession {
+  id           String   @id @default(uuid())
+  createdAt    DateTime @default(now())
+  lastActiveAt DateTime @default(now())
+
+  submissions     Submission[]
+  quizAttempts    QuizAttempt[]
+  projectProgress ProjectProgress[]
+  earnedSkills    EarnedSkill[]
+  activityLogs    ActivityLog[]
+}
+
+model Stage {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  description String
+  order       Int
+
+  modules Module[]
+}
+
+model Module {
+  id          String @id @default(uuid())
+  stageId     String
+  title       String
+  slug        String @unique
+  description String
+  order       Int
+
+  stage   Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+}
+
+model Lesson {
+  id             String @id @default(uuid())
+  moduleId       String
+  title          String
+  slug           String @unique
+  content        String // markdown
+  commonMistakes String // markdown
+  order          Int
+
+  module        Module         @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  exercises     Exercise[]
+  quizQuestions QuizQuestion[]
+}
+
+model Exercise {
+  id             String @id @default(uuid())
+  lessonId       String
+  prompt         String
+  starterCode    String
+  expectedOutput String
+  testCode       String // optional test code to run
+  hints          String // JSON array of hint strings
+  order          Int
+
+  lesson      Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+}
+
+model QuizQuestion {
+  id            String @id @default(uuid())
+  lessonId      String
+  question      String
+  type          String // MCQ or TRUE_FALSE
+  options       String // JSON array of option strings
+  correctAnswer String
+  explanation   String
+  order         Int
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+}
+
+model Submission {
+  id         String   @id @default(uuid())
+  sessionId  String
+  exerciseId String
+  code       String
+  passed     Boolean
+  output     String
+  createdAt  DateTime @default(now())
+
+  session  GuestSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exercise Exercise     @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+}
+
+model QuizAttempt {
+  id        String   @id @default(uuid())
+  sessionId String
+  lessonId  String
+  answers   String // JSON: { questionId: selectedAnswer }
+  score     Int
+  total     Int
+  createdAt DateTime @default(now())
+
+  session GuestSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model Project {
+  id           String @id @default(uuid())
+  title        String
+  slug         String @unique
+  stage        String // BEGINNER, DATA, ML
+  brief        String
+  requirements String // JSON array
+  stretchGoals String // JSON array
+  steps        String // JSON array of { title, description }
+  rubric       String // JSON array of { criterion, description }
+  solutionUrl  String?
+  order        Int
+
+  progress ProjectProgress[]
+}
+
+model ProjectProgress {
+  id          String    @id @default(uuid())
+  sessionId   String
+  projectId   String
+  status      String    @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, COMPLETED
+  completedAt DateTime?
+
+  session GuestSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  project Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, projectId])
+}
+
+model SkillTag {
+  id   String @id @default(uuid())
+  name String
+  slug String @unique
+
+  earnedSkills EarnedSkill[]
+}
+
+model EarnedSkill {
+  id         String   @id @default(uuid())
+  sessionId  String
+  skillTagId String
+  earnedAt   DateTime @default(now())
+
+  session  GuestSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  skillTag SkillTag     @relation(fields: [skillTagId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, skillTagId])
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  sessionId String
+  type      String // LESSON_VIEW, EXERCISE_PASS, QUIZ_COMPLETE, PROJECT_START, PROJECT_COMPLETE
+  metadata  String // JSON
+  createdAt DateTime @default(now())
+
+  session GuestSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
