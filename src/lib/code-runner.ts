@@ -1,9 +1,7 @@
-import { spawn } from 'child_process';
-import { writeFileSync, unlinkSync, mkdtempSync, rmdirSync } from 'fs';
-import { join } from 'path';
-import { tmpdir } from 'os';
 import { CODE_RUNNER } from './constants';
 import type { CodeRunResult } from '@/types';
+
+const PISTON_URL = 'https://emkc.org/api/v2/piston/execute';
 
 const BLOCKED_IMPORTS = [
   'os', 'sys', 'subprocess', 'shutil', 'socket', 'http', 'urllib',
@@ -16,7 +14,6 @@ const ALLOWED_IMPORTS = [
   'math', 'random', 'string', 'collections', 'itertools', 'functools',
   'json', 're', 'datetime', 'typing', 'decimal', 'fractions',
   'statistics', 'operator', 'copy', 'pprint', 'textwrap',
-  'numpy', 'pandas', 'matplotlib', 'sklearn', 'scipy',
 ];
 
 function buildSafetyWrapper(): string {
@@ -41,97 +38,89 @@ for _name in _blocked_builtins:
         if hasattr(_builtins, _name):
             delattr(_builtins, _name)
 
-# Redirect matplotlib to non-interactive backend
-try:
-    import matplotlib
-    matplotlib.use('Agg')
-except ImportError:
-    pass
-
 # --- User code starts below ---
 `;
 }
 
 export async function runCode(code: string): Promise<CodeRunResult> {
-  const dir = mkdtempSync(join(tmpdir(), 'py2ml-'));
-  const filePath = join(dir, 'code.py');
   const wrappedCode = buildSafetyWrapper() + code;
 
-  writeFileSync(filePath, wrappedCode, 'utf-8');
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), CODE_RUNNER.TIMEOUT_MS + 5000);
 
-  return new Promise((resolve) => {
-    let stdout = '';
-    let stderr = '';
-    let timedOut = false;
-    let settled = false;
-
-    const proc = spawn('python3', [filePath], {
-      timeout: CODE_RUNNER.TIMEOUT_MS,
-      env: { ...process.env, HOME: '/tmp', PYTHONDONTWRITEBYTECODE: '1' },
-      cwd: dir,
+    const response = await fetch(PISTON_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        language: 'python',
+        version: '3.10.0',
+        files: [{ name: 'main.py', content: wrappedCode }],
+        run_timeout: CODE_RUNNER.TIMEOUT_MS,
+        compile_memory_limit: -1,
+        run_memory_limit: 256000000, // 256MB
+      }),
+      signal: controller.signal,
     });
 
-    proc.stdout.on('data', (data: Buffer) => {
-      if (stdout.length < CODE_RUNNER.MAX_BUFFER) {
-        stdout += data.toString();
-      }
-    });
+    clearTimeout(timeout);
 
-    proc.stderr.on('data', (data: Buffer) => {
-      if (stderr.length < CODE_RUNNER.MAX_BUFFER) {
-        stderr += data.toString();
-      }
-    });
-
-    const timer = setTimeout(() => {
-      timedOut = true;
-      proc.kill('SIGKILL');
-    }, CODE_RUNNER.TIMEOUT_MS);
-
-    proc.on('close', (exitCode) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      try { unlinkSync(filePath); } catch {}
-      try { rmdirSync(dir); } catch {}
-
-      // Clean up stderr to remove safety wrapper line numbers
-      const cleanStderr = cleanErrorOutput(stderr);
-
-      resolve({
-        stdout: stdout.trimEnd(),
-        stderr: cleanStderr.trimEnd(),
-        exitCode,
-        timedOut,
-      });
-    });
-
-    proc.on('error', (err) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      try { unlinkSync(filePath); } catch {}
-      try { rmdirSync(dir); } catch {}
-
-      resolve({
+    if (!response.ok) {
+      return {
         stdout: '',
-        stderr: err.message,
+        stderr: `Code execution service error (${response.status})`,
         exitCode: 1,
         timedOut: false,
-      });
-    });
-  });
+      };
+    }
+
+    const data = await response.json();
+    const run = data.run;
+
+    if (!run) {
+      return {
+        stdout: '',
+        stderr: 'No execution result returned',
+        exitCode: 1,
+        timedOut: false,
+      };
+    }
+
+    const timedOut = run.signal === 'SIGKILL' || (run.stderr && run.stderr.includes('timed out'));
+    const cleanStderr = cleanErrorOutput(run.stderr || '');
+
+    return {
+      stdout: (run.stdout || '').trimEnd(),
+      stderr: cleanStderr.trimEnd(),
+      exitCode: run.code ?? (timedOut ? 1 : 0),
+      timedOut,
+    };
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return {
+        stdout: '',
+        stderr: 'Execution timed out',
+        exitCode: 1,
+        timedOut: true,
+      };
+    }
+    return {
+      stdout: '',
+      stderr: error instanceof Error ? error.message : 'Unknown execution error',
+      exitCode: 1,
+      timedOut: false,
+    };
+  }
 }
 
 function cleanErrorOutput(stderr: string): string {
-  // Adjust line numbers in tracebacks to account for the safety wrapper
   const wrapperLines = buildSafetyWrapper().split('\n').length;
-  return stderr.replace(/File ".*?code\.py", line (\d+)/g, (match, lineNum) => {
+  return stderr.replace(/File ".*?main\.py", line (\d+)/g, (_match, lineNum) => {
     const adjusted = parseInt(lineNum) - wrapperLines;
     if (adjusted > 0) {
       return `File "<code>", line ${adjusted}`;
     }
-    return match;
+    return `File "<code>", line ${lineNum}`;
   });
 }
 
