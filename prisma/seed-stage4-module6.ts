@@ -1,3 +1,5 @@
+export {};
+
 async function seedModule6(prisma: any) {
   console.log('Seeding Stage 4 / Module 6: Object-Oriented Python...');
 

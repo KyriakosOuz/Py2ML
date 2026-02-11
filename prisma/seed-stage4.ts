@@ -1,3 +1,5 @@
+export {};
+
 const { PrismaClient } = require('@prisma/client');
 const { seedModule6 } = require('./seed-stage4-module6');
 const { seedModule7 } = require('./seed-stage4-module7');
