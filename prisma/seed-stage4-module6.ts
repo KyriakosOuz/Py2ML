@@ -1,6 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-
-async function seedModule6(prisma: InstanceType<typeof PrismaClient>) {
+async function seedModule6(prisma: any) {
   console.log('Seeding Stage 4 / Module 6: Object-Oriented Python...');
 
   // ═══════════════════════════════════════════════════════════════════
