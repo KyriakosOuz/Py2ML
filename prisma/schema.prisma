@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model GuestSession {
@@ -20,10 +21,10 @@ model GuestSession {
 }
 
 model Stage {
-  id          String   @id @default(uuid())
+  id          String @id @default(uuid())
   title       String
-  slug        String   @unique
-  description String
+  slug        String @unique
+  description String @db.Text
   order       Int
 
   modules Module[]
@@ -34,7 +35,7 @@ model Module {
   stageId     String
   title       String
   slug        String @unique
-  description String
+  description String @db.Text
   order       Int
 
   stage   Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
@@ -46,8 +47,8 @@ model Lesson {
   moduleId       String
   title          String
   slug           String @unique
-  content        String // markdown
-  commonMistakes String // markdown
+  content        String @db.Text
+  commonMistakes String @db.Text
   order          Int
 
   module        Module         @relation(fields: [moduleId], references: [id], onDelete: Cascade)
@@ -58,11 +59,11 @@ model Lesson {
 model Exercise {
   id             String @id @default(uuid())
   lessonId       String
-  prompt         String
-  starterCode    String
-  expectedOutput String
-  testCode       String // optional test code to run
-  hints          String // JSON array of hint strings
+  prompt         String @db.Text
+  starterCode    String @db.Text
+  expectedOutput String @db.Text
+  testCode       String @db.Text
+  hints          String @db.Text
   order          Int
 
   lesson      Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
@@ -72,11 +73,11 @@ model Exercise {
 model QuizQuestion {
   id            String @id @default(uuid())
   lessonId      String
-  question      String
-  type          String // MCQ or TRUE_FALSE
-  options       String // JSON array of option strings
+  question      String @db.Text
+  type          String
+  options       String @db.Text
   correctAnswer String
-  explanation   String
+  explanation   String @db.Text
   order         Int
 
   lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
@@ -86,9 +87,9 @@ model Submission {
   id         String   @id @default(uuid())
   sessionId  String
   exerciseId String
-  code       String
+  code       String   @db.Text
   passed     Boolean
-  output     String
+  output     String   @db.Text
   createdAt  DateTime @default(now())
 
   session  GuestSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
@@ -99,7 +100,7 @@ model QuizAttempt {
   id        String   @id @default(uuid())
   sessionId String
   lessonId  String
-  answers   String // JSON: { questionId: selectedAnswer }
+  answers   String   @db.Text
   score     Int
   total     Int
   createdAt DateTime @default(now())
@@ -108,15 +109,15 @@ model QuizAttempt {
 }
 
 model Project {
-  id           String @id @default(uuid())
+  id           String  @id @default(uuid())
   title        String
-  slug         String @unique
-  stage        String // BEGINNER, DATA, ML
-  brief        String
-  requirements String // JSON array
-  stretchGoals String // JSON array
-  steps        String // JSON array of { title, description }
-  rubric       String // JSON array of { criterion, description }
+  slug         String  @unique
+  stage        String
+  brief        String  @db.Text
+  requirements String  @db.Text
+  stretchGoals String  @db.Text
+  steps        String  @db.Text
+  rubric       String  @db.Text
   solutionUrl  String?
   order        Int
 
@@ -127,7 +128,7 @@ model ProjectProgress {
   id          String    @id @default(uuid())
   sessionId   String
   projectId   String
-  status      String    @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, COMPLETED
+  status      String    @default("NOT_STARTED")
   completedAt DateTime?
 
   session GuestSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
@@ -159,8 +160,8 @@ model EarnedSkill {
 model ActivityLog {
   id        String   @id @default(uuid())
   sessionId String
-  type      String // LESSON_VIEW, EXERCISE_PASS, QUIZ_COMPLETE, PROJECT_START, PROJECT_COMPLETE
-  metadata  String // JSON
+  type      String
+  metadata  String   @db.Text
   createdAt DateTime @default(now())
 
   session GuestSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
