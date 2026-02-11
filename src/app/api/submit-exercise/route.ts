@@ -4,6 +4,8 @@ import { getOrCreateSession } from '@/lib/session';
 import { runCode, runCodeWithTests, validateOutput } from '@/lib/code-runner';
 import { submitExerciseSchema } from '@/lib/validators';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const sessionId = await getOrCreateSession();

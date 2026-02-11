@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db';
 import { getOrCreateSession } from '@/lib/session';
 import { submitQuizSchema } from '@/lib/validators';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const sessionId = await getOrCreateSession();

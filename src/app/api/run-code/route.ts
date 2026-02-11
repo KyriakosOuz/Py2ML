@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { runCode } from '@/lib/code-runner';
 import { runCodeSchema } from '@/lib/validators';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
