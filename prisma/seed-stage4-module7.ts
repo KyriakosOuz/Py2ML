@@ -1,3 +1,5 @@
+export {};
+
 async function seedModule7(prisma: any) {
   console.log('Seeding Module 7: Professional Python...');
 
