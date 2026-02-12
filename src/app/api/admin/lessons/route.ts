@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireAdmin } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    await requireAdmin();
+
     const lessons = await prisma.lesson.findMany({
       orderBy: [
         { module: { stage: { order: 'asc' } } },
@@ -40,6 +43,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    await requireAdmin();
     const body = await request.json();
     const { title, slug, moduleId, content, commonMistakes, order } = body;
 
@@ -56,6 +60,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    await requireAdmin();
     const body = await request.json();
     const { id, ...data } = body;
 

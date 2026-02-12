@@ -1,39 +1,30 @@
-import { cookies } from 'next/headers';
-import { v4 as uuidv4 } from 'uuid';
-import { prisma } from './db';
+import { auth } from './auth';
 
-const SESSION_COOKIE = 'py2ml_session';
-
-export async function getOrCreateSession(): Promise<string> {
-  const cookieStore = cookies();
-  const existing = cookieStore.get(SESSION_COOKIE);
-
-  if (existing?.value) {
-    const session = await prisma.guestSession.findUnique({
-      where: { id: existing.value },
-    });
-    if (session) {
-      await prisma.guestSession.update({
-        where: { id: session.id },
-        data: { lastActiveAt: new Date() },
-      });
-      return session.id;
-    }
-  }
-
-  const id = uuidv4();
-  await prisma.guestSession.create({ data: { id } });
-  cookieStore.set(SESSION_COOKIE, id, {
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 365, // 1 year
-    path: '/',
-  });
-
-  return id;
+/**
+ * Get the authenticated user's ID from the session.
+ * Returns null if not authenticated.
+ */
+export async function getUserId(): Promise<string | null> {
+  const session = await auth();
+  return session?.user?.id ?? null;
 }
 
-export async function getSessionId(): Promise<string | null> {
-  const cookieStore = cookies();
-  return cookieStore.get(SESSION_COOKIE)?.value ?? null;
+/**
+ * Get the authenticated user's ID, or throw a 401-style error.
+ * Use this in API routes that require authentication.
+ */
+export async function requireUserId(): Promise<string> {
+  const userId = await getUserId();
+  if (!userId) throw new Error('Unauthorized');
+  return userId;
+}
+
+/**
+ * Check if the current user has the ADMIN role.
+ */
+export async function requireAdmin(): Promise<string> {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error('Unauthorized');
+  if (session.user.role !== 'ADMIN') throw new Error('Forbidden');
+  return session.user.id;
 }

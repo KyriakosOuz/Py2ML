@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getOrCreateSession } from '@/lib/session';
+import { requireUserId } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const sessionId = await getOrCreateSession();
+    const userId = await requireUserId();
 
     // Get all lessons count
     const totalLessons = await prisma.lesson.count();
@@ -14,7 +14,7 @@ export async function GET() {
     // Get all exercises and passed exercises
     const totalExercises = await prisma.exercise.count();
     const passedSubmissions = await prisma.submission.findMany({
-      where: { sessionId, passed: true },
+      where: { userId, passed: true },
       select: { exerciseId: true },
       distinct: ['exerciseId'],
     });
@@ -22,7 +22,7 @@ export async function GET() {
 
     // Get quiz average
     const quizAttempts = await prisma.quizAttempt.findMany({
-      where: { sessionId },
+      where: { userId },
       orderBy: { createdAt: 'desc' },
     });
     // Get best attempt per lesson
@@ -72,21 +72,21 @@ export async function GET() {
 
     // Earned skills
     const earnedSkills = await prisma.earnedSkill.findMany({
-      where: { sessionId },
+      where: { userId },
       include: { skillTag: true },
       orderBy: { earnedAt: 'desc' },
     });
 
     // Recent activity
     const recentActivity = await prisma.activityLog.findMany({
-      where: { sessionId },
+      where: { userId },
       orderBy: { createdAt: 'desc' },
       take: 10,
     });
 
     // Calculate streak (consecutive days with activity)
     const allActivity = await prisma.activityLog.findMany({
-      where: { sessionId },
+      where: { userId },
       orderBy: { createdAt: 'desc' },
       select: { createdAt: true },
     });

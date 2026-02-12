@@ -1,13 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { Menu, Flame } from 'lucide-react';
+import UserMenu from '@/components/auth/UserMenu';
 
 interface HeaderProps {
   onMenuToggle: () => void;
 }
 
 export default function Header({ onMenuToggle }: HeaderProps) {
+  const { data: session } = useSession();
   const [streak, setStreak] = useState(0);
   const [progress, setProgress] = useState(0);
 
@@ -71,6 +74,18 @@ export default function Header({ onMenuToggle }: HeaderProps) {
             {progress}%
           </span>
         </div>
+
+        {/* User menu */}
+        {session?.user && (
+          <UserMenu
+            user={{
+              name: session.user.name,
+              email: session.user.email,
+              image: session.user.image,
+              role: session.user.role,
+            }}
+          />
+        )}
       </div>
     </header>
   );

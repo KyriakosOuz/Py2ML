@@ -1,19 +1,19 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getOrCreateSession } from '@/lib/session';
+import { requireUserId } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const sessionId = await getOrCreateSession();
+    const userId = await requireUserId();
 
     const projects = await prisma.project.findMany({
       orderBy: { order: 'asc' },
     });
 
     const progress = await prisma.projectProgress.findMany({
-      where: { sessionId },
+      where: { userId },
     });
 
     const progressMap = new Map(progress.map((p: { projectId: string; status: string }) => [p.projectId, p.status]));

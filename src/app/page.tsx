@@ -1,22 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { ArrowRight, BookOpen, Code2, Brain, Rocket } from 'lucide-react';
+import { ArrowRight, BookOpen, Code2, Brain, Rocket, Bot, Briefcase } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 
 export default function HomePage() {
+  const { data: session } = useSession();
   const [nextLesson, setNextLesson] = useState<{ id: string; title: string } | null>(null);
 
   useEffect(() => {
-    fetch('/api/dashboard')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.nextLesson) setNextLesson(data.nextLesson);
-      })
-      .catch(console.error);
-  }, []);
+    if (session) {
+      fetch('/api/dashboard')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.nextLesson) setNextLesson(data.nextLesson);
+        })
+        .catch(console.error);
+    }
+  }, [session]);
 
   const stages = [
     {
@@ -28,17 +32,31 @@ export default function HomePage() {
     },
     {
       icon: BookOpen,
-      title: 'Python for Data',
+      title: 'Data Structures & Logic',
       description: 'Learn NumPy, Pandas, and Matplotlib for data analysis and visualization.',
       lessons: 7,
       color: 'text-green-400',
     },
     {
       icon: Brain,
-      title: 'ML/AI Track',
-      description: 'Build ML models with scikit-learn: classification, regression, and more.',
-      lessons: 5,
+      title: 'ML & Deep Learning',
+      description: 'Build ML models with scikit-learn, then dive into neural networks with TensorFlow.',
+      lessons: 12,
       color: 'text-purple-400',
+    },
+    {
+      icon: Bot,
+      title: 'NLP & Agentic AI',
+      description: 'Master transformers, prompt engineering, RAG pipelines, and autonomous AI agents.',
+      lessons: 13,
+      color: 'text-cyan-400',
+    },
+    {
+      icon: Briefcase,
+      title: 'MLOps & Career Ready',
+      description: 'Deploy models with FastAPI & Docker. Build your portfolio and ace interviews.',
+      lessons: 7,
+      color: 'text-amber-400',
     },
   ];
 
@@ -48,7 +66,7 @@ export default function HomePage() {
       <div className="text-center mb-16">
         <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm mb-6">
           <Rocket size={16} />
-          From Zero to ML
+          From Zero to AI Engineer
         </div>
         <h1 className="font-serif text-4xl md:text-5xl text-text-primary mb-4">
           Learn Python.<br />
@@ -56,18 +74,27 @@ export default function HomePage() {
         </h1>
         <p className="text-text-secondary text-lg max-w-2xl mx-auto mb-8">
           A structured curriculum that takes you from your first <code className="text-primary bg-surface-light px-1.5 py-0.5 rounded text-sm font-mono">print()</code> to
-          building machine learning models. Interactive exercises, real projects, and instant feedback.
+          building AI agents and deploying ML models. 52 lessons, real projects, and instant feedback.
         </p>
         <div className="flex items-center justify-center gap-4">
-          <Link href={nextLesson ? `/lesson/${nextLesson.id}` : '/curriculum'}>
-            <Button size="lg">
-              {nextLesson ? 'Continue Learning' : 'Start Learning'}
-              <ArrowRight size={18} className="ml-2" />
-            </Button>
-          </Link>
-          <Link href="/curriculum">
+          {session ? (
+            <Link href={nextLesson ? `/lesson/${nextLesson.id}` : '/curriculum'}>
+              <Button size="lg">
+                {nextLesson ? 'Continue Learning' : 'Start Learning'}
+                <ArrowRight size={18} className="ml-2" />
+              </Button>
+            </Link>
+          ) : (
+            <Link href="/signup">
+              <Button size="lg">
+                Get Started Free
+                <ArrowRight size={18} className="ml-2" />
+              </Button>
+            </Link>
+          )}
+          <Link href={session ? '/curriculum' : '/login'}>
             <Button variant="secondary" size="lg">
-              View Curriculum
+              {session ? 'View Curriculum' : 'Sign In'}
             </Button>
           </Link>
         </div>
@@ -76,10 +103,10 @@ export default function HomePage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
         {[
-          { label: 'Lessons', value: '20' },
-          { label: 'Exercises', value: '60' },
-          { label: 'Quizzes', value: '60' },
-          { label: 'Projects', value: '6' },
+          { label: 'Lessons', value: '52' },
+          { label: 'Exercises', value: '150+' },
+          { label: 'Quizzes', value: '150+' },
+          { label: 'Projects', value: '16' },
         ].map((stat) => (
           <div key={stat.label} className="text-center p-4 bg-surface rounded-xl border border-border">
             <p className="font-mono text-2xl text-primary font-bold">{stat.value}</p>
@@ -89,13 +116,13 @@ export default function HomePage() {
       </div>
 
       {/* Stages */}
-      <h2 className="font-serif text-2xl text-text-primary mb-6">Three Stages to Mastery</h2>
-      <div className="grid md:grid-cols-3 gap-6 mb-16">
+      <h2 className="font-serif text-2xl text-text-primary mb-6">Your Path to AI Mastery</h2>
+      <div className="grid md:grid-cols-3 lg:grid-cols-5 gap-4 mb-16">
         {stages.map((stage, i) => (
           <Card key={i} hover>
-            <stage.icon className={`${stage.color} mb-4`} size={32} />
-            <h3 className="font-serif text-lg text-text-primary mb-2">{stage.title}</h3>
-            <p className="text-text-secondary text-sm mb-4">{stage.description}</p>
+            <stage.icon className={`${stage.color} mb-3`} size={28} />
+            <h3 className="font-serif text-base text-text-primary mb-1">{stage.title}</h3>
+            <p className="text-text-secondary text-xs mb-3 leading-relaxed">{stage.description}</p>
             <p className="text-text-muted text-xs font-mono">{stage.lessons} lessons</p>
           </Card>
         ))}
@@ -108,7 +135,7 @@ export default function HomePage() {
           { title: 'Interactive Code Editor', desc: 'Write and run Python directly in your browser with Monaco editor.' },
           { title: 'Instant Feedback', desc: 'Get immediate pass/fail on exercises with helpful error messages.' },
           { title: 'Progressive Hints', desc: 'Stuck? Reveal hints one at a time to guide your thinking.' },
-          { title: 'Real Projects', desc: 'Apply your skills with 6 hands-on projects from CLI tools to ML models.' },
+          { title: 'Real Projects', desc: 'Apply your skills with 16 hands-on projects from CLI tools to deployed AI agents.' },
         ].map((feature, i) => (
           <div key={i} className="flex gap-4 p-4">
             <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">

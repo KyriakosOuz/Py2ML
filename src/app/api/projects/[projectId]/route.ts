@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getOrCreateSession } from '@/lib/session';
+import { requireUserId } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: { projectId: string } }
 ) {
   try {
-    const sessionId = await getOrCreateSession();
+    const userId = await requireUserId();
     const { projectId } = params;
 
     const project = await prisma.project.findUnique({
@@ -21,7 +21,7 @@ export async function GET(
     }
 
     const progress = await prisma.projectProgress.findUnique({
-      where: { sessionId_projectId: { sessionId, projectId } },
+      where: { userId_projectId: { userId, projectId } },
     });
 
     return NextResponse.json({
@@ -44,7 +44,7 @@ export async function PUT(
   { params }: { params: { projectId: string } }
 ) {
   try {
-    const sessionId = await getOrCreateSession();
+    const userId = await requireUserId();
     const { projectId } = params;
     const { status } = await request.json();
 
@@ -53,13 +53,13 @@ export async function PUT(
     }
 
     const progress = await prisma.projectProgress.upsert({
-      where: { sessionId_projectId: { sessionId, projectId } },
+      where: { userId_projectId: { userId, projectId } },
       update: {
         status,
         completedAt: status === 'COMPLETED' ? new Date() : null,
       },
       create: {
-        sessionId,
+        userId,
         projectId,
         status,
         completedAt: status === 'COMPLETED' ? new Date() : null,
@@ -71,7 +71,7 @@ export async function PUT(
       const project = await prisma.project.findUnique({ where: { id: projectId } });
       await prisma.activityLog.create({
         data: {
-          sessionId,
+          userId,
           type: status === 'COMPLETED' ? 'PROJECT_COMPLETE' : 'PROJECT_START',
           metadata: JSON.stringify({ projectId, projectTitle: project?.title }),
         },
