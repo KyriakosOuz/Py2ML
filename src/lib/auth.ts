@@ -44,28 +44,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user }) {
+      // On initial sign-in, persist user data into the token
       if (user) {
         token.id = user.id;
         token.role = user.role || 'STUDENT';
       }
-      if (trigger === 'update' && session) {
-        token.name = session.name;
+      // For OAuth users who don't come through authorize(), look up role once
+      if (token.sub && !token.role) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.sub },
+            select: { role: true },
+          });
+          if (dbUser) token.role = dbUser.role;
+        } catch {
+          // DB unreachable — fall back to STUDENT
+          token.role = 'STUDENT';
+        }
       }
-      // Fetch role from DB on every token refresh to stay in sync
-      if (token.id && !user) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: { role: true },
-        });
-        if (dbUser) token.role = dbUser.role;
+      // Ensure id is always set (use sub as fallback)
+      if (!token.id && token.sub) {
+        token.id = token.sub;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
+        session.user.id = (token.id || token.sub) as string;
+        session.user.role = (token.role as string) || 'STUDENT';
       }
       return session;
     },
