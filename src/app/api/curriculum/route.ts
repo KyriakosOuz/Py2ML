@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getOrCreateSession } from '@/lib/session';
+import { requireUserId } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const sessionId = await getOrCreateSession();
+    const userId = await requireUserId();
 
     const stages = await prisma.stage.findMany({
       orderBy: { order: 'asc' },
@@ -33,7 +33,7 @@ export async function GET() {
 
     // Get all passed exercise IDs for this session
     const passedSubmissions = await prisma.submission.findMany({
-      where: { sessionId, passed: true },
+      where: { userId, passed: true },
       select: { exerciseId: true },
       distinct: ['exerciseId'],
     });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getOrCreateSession } from '@/lib/session';
+import { requireUserId } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: { lessonId: string } }
 ) {
   try {
-    const sessionId = await getOrCreateSession();
+    const userId = await requireUserId();
     const { lessonId } = params;
 
     const lesson = await prisma.lesson.findUnique({
@@ -37,10 +37,10 @@ export async function GET(
       return NextResponse.json({ error: 'Lesson not found' }, { status: 404 });
     }
 
-    // Get submissions for this session's exercises
+    // Get submissions for this user's exercises
     const submissions = await prisma.submission.findMany({
       where: {
-        sessionId,
+        userId,
         exerciseId: { in: lesson.exercises.map((e) => e.id) },
       },
       orderBy: { createdAt: 'desc' },
@@ -52,14 +52,14 @@ export async function GET(
 
     // Get quiz attempts
     const quizAttempt = await prisma.quizAttempt.findFirst({
-      where: { sessionId, lessonId },
+      where: { userId, lessonId },
       orderBy: { createdAt: 'desc' },
     });
 
     // Log activity
     await prisma.activityLog.create({
       data: {
-        sessionId,
+        userId,
         type: 'LESSON_VIEW',
         metadata: JSON.stringify({ lessonId, lessonTitle: lesson.title }),
       },

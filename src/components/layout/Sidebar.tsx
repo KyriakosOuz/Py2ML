@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -16,6 +17,8 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === 'ADMIN';
   const [curriculum, setCurriculum] = useState<CurriculumStage[]>([]);
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set());
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
@@ -156,20 +159,22 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           ))}
         </div>
 
-        {/* Admin link */}
-        <div className="p-3 border-t border-border flex-shrink-0">
-          <Link
-            href="/admin"
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-              pathname.startsWith('/admin')
-                ? 'bg-primary/10 text-primary'
-                : 'text-text-muted hover:bg-surface-light hover:text-text-secondary'
-            }`}
-          >
-            <Settings size={18} />
-            Admin
-          </Link>
-        </div>
+        {/* Admin link — only visible to admins */}
+        {isAdmin && (
+          <div className="p-3 border-t border-border flex-shrink-0">
+            <Link
+              href="/admin"
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                pathname.startsWith('/admin')
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-text-muted hover:bg-surface-light hover:text-text-secondary'
+              }`}
+            >
+              <Settings size={18} />
+              Admin
+            </Link>
+          </div>
+        )}
       </aside>
     </>
   );

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getOrCreateSession } from '@/lib/session';
+import { requireUserId } from '@/lib/session';
 import { submitQuizSchema } from '@/lib/validators';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const sessionId = await getOrCreateSession();
+    const userId = await requireUserId();
     const body = await request.json();
     const parsed = submitQuizSchema.safeParse(body);
 
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     // Save quiz attempt
     await prisma.quizAttempt.create({
       data: {
-        sessionId,
+        userId,
         lessonId,
         answers: JSON.stringify(answers),
         score,
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     const lesson = await prisma.lesson.findUnique({ where: { id: lessonId } });
     await prisma.activityLog.create({
       data: {
-        sessionId,
+        userId,
         type: 'QUIZ_COMPLETE',
         metadata: JSON.stringify({
           lessonId,
