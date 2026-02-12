@@ -12,14 +12,16 @@ export default function HomePage() {
   const [nextLesson, setNextLesson] = useState<{ id: string; title: string } | null>(null);
 
   useEffect(() => {
-    if (session) {
-      fetch('/api/dashboard')
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.nextLesson) setNextLesson(data.nextLesson);
-        })
-        .catch(console.error);
-    }
+    if (!session?.user) return;
+    fetch('/api/dashboard')
+      .then((res) => {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then((data) => {
+        if (data?.nextLesson) setNextLesson(data.nextLesson);
+      })
+      .catch(console.error);
   }, [session]);
 
   const stages = [

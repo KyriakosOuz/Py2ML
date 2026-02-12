@@ -15,16 +15,21 @@ export default function Header({ onMenuToggle }: HeaderProps) {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
+    if (!session?.user) return;
     fetch('/api/dashboard')
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) return null;
+        return res.json();
+      })
       .then((data) => {
+        if (!data) return;
         if (data.streak !== undefined) setStreak(data.streak);
         if (data.totalLessons > 0) {
           setProgress(Math.round((data.completedLessons / data.totalLessons) * 100));
         }
       })
       .catch(console.error);
-  }, []);
+  }, [session]);
 
   return (
     <header className="h-14 bg-surface border-b border-border flex items-center justify-between px-4 lg:px-6">

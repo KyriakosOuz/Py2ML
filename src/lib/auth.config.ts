@@ -7,6 +7,7 @@ import Google from 'next-auth/providers/google';
  * Does NOT include PrismaAdapter (requires Node.js).
  */
 export default {
+  trustHost: true,
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
