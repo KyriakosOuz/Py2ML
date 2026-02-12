@@ -6,6 +6,9 @@ const { seedModule8 } = require('./seed-stage5-module8');
 const prisma = new PrismaClient();
 
 async function main() {
+  const existing = await prisma.stage.findUnique({ where: { id: 'stage-005' } });
+  if (existing) { console.log('Stage 5 already seeded. Skipping.'); return; }
+
   console.log('═══════════════════════════════════════════');
   console.log('  Seeding Stage 5: Deep Learning & Neural Networks');
   console.log('═══════════════════════════════════════════');

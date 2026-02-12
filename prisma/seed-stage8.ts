@@ -4,6 +4,9 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function main() {
+  const existing = await prisma.stage.findUnique({ where: { id: 'stage-008' } });
+  if (existing) { console.log('Stage 8 already seeded. Skipping.'); return; }
+
   console.log('═══════════════════════════════════════════');
   console.log('  Seeding Stage 8: MLOps & Career Ready');
   console.log('═══════════════════════════════════════════');

@@ -4,20 +4,12 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Seeding Py2ML Academy database (Part 1)...');
 
-  // ─── Clear existing data ───────────────────────────────────────────
-  await prisma.earnedSkill.deleteMany();
-  await prisma.activityLog.deleteMany();
-  await prisma.projectProgress.deleteMany();
-  await prisma.quizAttempt.deleteMany();
-  await prisma.submission.deleteMany();
-  await prisma.quizQuestion.deleteMany();
-  await prisma.exercise.deleteMany();
-  await prisma.lesson.deleteMany();
-  await prisma.module.deleteMany();
-  await prisma.stage.deleteMany();
-  await prisma.project.deleteMany();
-  await prisma.skillTag.deleteMany();
-  await prisma.guestSession.deleteMany();
+  // ─── Skip if stages 1-3 already exist ──────────────────────────────
+  const existing = await prisma.stage.findUnique({ where: { id: 'stage-001' } });
+  if (existing) {
+    console.log('Stages 1-3 already seeded. Skipping.');
+    return;
+  }
 
   // ═══════════════════════════════════════════════════════════════════
   //  SKILL TAGS
