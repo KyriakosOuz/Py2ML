@@ -24,22 +24,25 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    if (!session) return;
     fetch('/api/curriculum')
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) return null;
+        return res.json();
+      })
       .then((data) => {
-        if (Array.isArray(data)) {
-          setCurriculum(data);
-          // Auto-expand first stage
-          if (data.length > 0) {
-            setExpandedStages(new Set([data[0].id]));
-            if (data[0].modules?.length > 0) {
-              setExpandedModules(new Set([data[0].modules[0].id]));
-            }
+        if (!data || !Array.isArray(data)) return;
+        setCurriculum(data);
+        // Auto-expand first stage
+        if (data.length > 0) {
+          setExpandedStages(new Set([data[0].id]));
+          if (data[0].modules?.length > 0) {
+            setExpandedModules(new Set([data[0].modules[0].id]));
           }
         }
       })
       .catch(console.error);
-  }, []);
+  }, [session]);
 
   const toggleStage = (id: string) => {
     setExpandedStages((prev) => {

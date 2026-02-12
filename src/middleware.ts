@@ -25,6 +25,10 @@ export default auth((req) => {
 
   // Everything below requires login
   if (!isLoggedIn) {
+    // API routes get a JSON 401 instead of an HTML redirect
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const loginUrl = new URL('/login', req.url);
     loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);
@@ -33,6 +37,9 @@ export default auth((req) => {
   // Admin routes require ADMIN role
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
     if (userRole !== 'ADMIN') {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
       return NextResponse.redirect(new URL('/dashboard', req.url));
     }
   }
