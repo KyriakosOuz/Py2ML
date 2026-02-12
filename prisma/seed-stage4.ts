@@ -7,6 +7,9 @@ const { seedModule7 } = require('./seed-stage4-module7');
 const prisma = new PrismaClient();
 
 async function main() {
+  const existing = await prisma.stage.findUnique({ where: { id: 'stage-004' } });
+  if (existing) { console.log('Stage 4 already seeded. Skipping.'); return; }
+
   console.log('═══════════════════════════════════════════');
   console.log('  Seeding Stage 4: Advanced Python');
   console.log('═══════════════════════════════════════════');

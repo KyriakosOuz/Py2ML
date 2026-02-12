@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma db push --accept-data-loss && next build",
+    "build": "prisma generate && prisma db push --accept-data-loss && npx prisma db seed && next build",
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint"
@@ -27,7 +27,7 @@
     "zod": "^4.3.6"
   },
   "prisma": {
-    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed-all.ts"
   },
   "devDependencies": {
     "@types/node": "^20",
