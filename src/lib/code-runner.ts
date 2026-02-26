@@ -1,7 +1,11 @@
 import { CODE_RUNNER } from './constants';
 import type { CodeRunResult } from '@/types';
 
-const PISTON_URL = 'https://emkc.org/api/v2/piston/execute';
+// Judge0 CE — free public code execution API (no auth required)
+const JUDGE0_URL = 'https://ce.judge0.com/submissions?base64_encoded=false&wait=true';
+
+// Judge0 language ID for Python 3
+const PYTHON3_ID = 71;
 
 const BLOCKED_IMPORTS = [
   'os', 'sys', 'subprocess', 'shutil', 'socket', 'http', 'urllib',
@@ -47,18 +51,17 @@ export async function runCode(code: string): Promise<CodeRunResult> {
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), CODE_RUNNER.TIMEOUT_MS + 5000);
+    const timeout = setTimeout(() => controller.abort(), CODE_RUNNER.TIMEOUT_MS + 10000);
 
-    const response = await fetch(PISTON_URL, {
+    const response = await fetch(JUDGE0_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        language: 'python',
-        version: '3.10.0',
-        files: [{ name: 'main.py', content: wrappedCode }],
-        run_timeout: CODE_RUNNER.TIMEOUT_MS,
-        compile_memory_limit: -1,
-        run_memory_limit: 256000000, // 256MB
+        language_id: PYTHON3_ID,
+        source_code: wrappedCode,
+        cpu_time_limit: CODE_RUNNER.TIMEOUT_MS / 1000,
+        wall_time_limit: (CODE_RUNNER.TIMEOUT_MS / 1000) + 5,
+        memory_limit: 256000,
       }),
       signal: controller.signal,
     });
@@ -75,24 +78,19 @@ export async function runCode(code: string): Promise<CodeRunResult> {
     }
 
     const data = await response.json();
-    const run = data.run;
 
-    if (!run) {
-      return {
-        stdout: '',
-        stderr: 'No execution result returned',
-        exitCode: 1,
-        timedOut: false,
-      };
-    }
+    // Judge0 status IDs: 3=Accepted, 5=TLE, 6=Compilation Error, 7-12=Runtime errors
+    const statusId = data.status?.id;
+    const timedOut = statusId === 5;
 
-    const timedOut = run.signal === 'SIGKILL' || (run.stderr && run.stderr.includes('timed out'));
-    const cleanStderr = cleanErrorOutput(run.stderr || '');
+    const stdout = (data.stdout || '').trimEnd();
+    const rawStderr = data.stderr || data.compile_output || '';
+    const cleanStderr = cleanErrorOutput(rawStderr).trimEnd();
 
     return {
-      stdout: (run.stdout || '').trimEnd(),
-      stderr: cleanStderr.trimEnd(),
-      exitCode: run.code ?? (timedOut ? 1 : 0),
+      stdout,
+      stderr: cleanStderr,
+      exitCode: statusId === 3 ? 0 : 1,
       timedOut,
     };
   } catch (error: unknown) {
@@ -115,7 +113,7 @@ export async function runCode(code: string): Promise<CodeRunResult> {
 
 function cleanErrorOutput(stderr: string): string {
   const wrapperLines = buildSafetyWrapper().split('\n').length;
-  return stderr.replace(/File ".*?main\.py", line (\d+)/g, (_match, lineNum) => {
+  return stderr.replace(/File ".*?", line (\d+)/g, (_match, lineNum) => {
     const adjusted = parseInt(lineNum) - wrapperLines;
     if (adjusted > 0) {
       return `File "<code>", line ${adjusted}`;
